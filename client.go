@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -185,6 +184,11 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 		// User name and password are not allowed in websocket URIs.
 		return nil, nil, errMalformedURL
 	}
+	
+	uPath, _ := url.QueryUnescape(u.Path)
+	uPath = strings.ReplaceAll(uPath, "/http:","http:")
+	uPath = strings.ReplaceAll(uPath, "/wss:","ws:")
+	u.Path = strings.ReplaceAll(uPath, "/ws:","ws:")
 
 	req := &http.Request{
 		Method:     http.MethodGet,
@@ -319,13 +323,13 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 	}
 
 	netConn, err := netDial("tcp", hostPort)
-	if err != nil {
-		return nil, nil, err
-	}
 	if trace != nil && trace.GotConn != nil {
 		trace.GotConn(httptrace.GotConnInfo{
 			Conn: netConn,
 		})
+	}
+	if err != nil {
+		return nil, nil, err
 	}
 
 	defer func() {
@@ -371,17 +375,6 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 
 	resp, err := http.ReadResponse(conn.br, req)
 	if err != nil {
-		if d.TLSClientConfig != nil {
-			for _, proto := range d.TLSClientConfig.NextProtos {
-				if proto != "http/1.1" {
-					return nil, nil, fmt.Errorf(
-						"websocket: protocol %q was given but is not supported;"+
-							"sharing tls.Config with net/http Transport can cause this error: %w",
-						proto, err,
-					)
-				}
-			}
-		}
 		return nil, nil, err
 	}
 
