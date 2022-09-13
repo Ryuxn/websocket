@@ -1,3 +1,3 @@
-module github.com/Ryuxn/websocket
+module github.com/ryuxn/websocket
 
 go 1.12
